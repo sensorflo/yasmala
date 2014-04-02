@@ -1,0 +1,1461 @@
+\documentclass[a4paper]{report}
+\usepackage{verbatim}
+\usepackage{listings}
+\begin{document}
+\lstset{language={},basicstyle=\small}
+\author{Florian Kaufmann}
+\title{Yasmala - Yet Another Syntax MetA LAnguage}
+\date{\today}
+\maketitle
+
+\begin{abstract}
+Yasmala is Yet Another Syntax MetA LAnguage. The aim of Yasmala is to make it
+easy to read and write concise syntax rules. This helps to learn a computer
+language or later to look up it's syntactic details.
+
+Current meta languages as BNF or EBNF produce rather long and complex rules, and
+its a bit cumbersome to write semantic comments. Yasmala has many of Perl's
+regex constructs and even some more, which makes it easy to write concise syntax
+rules. Yasmala, like EBNF or BNF, but unlike minimal BASIC or the C syntactic
+metalanguage, does not depend upon faces. E.g. the C syntactic metalanguage uses
+italic font for non-terminal symbols and bold font for terminal symbols.
+
+Yasmala (C) by Florian Kaufmann is licensed under a Creative Commons
+Attribution-ShareAlike 4.0 International License.
+
+You should have received a copy of the license along with this work. If not,
+see <http://creativecommons.org/licenses/by-sa/4.0/>.
+\end{abstract}
+
+\tableofcontents
+
+\chapter{Introduction}
+
+\section{Obligatory pre-banter}
+
+\subsection{Definitions}
+
+\begin{description}
+\item[Blank] A space or tab or newline character.
+\item[Symbol] Regarding Yasmala, symbol and character are synonyms. Symbol is
+     formal grammar lingo.
+\item[Token] See terminal symbol.
+\item[Terminal symbol] A literal string forming the input of a formal grammar
+     (e.g. Yasmala) and cannot be broken down into smaller units without losing
+     its literal meaning. Also called token.
+\item[Non-terminal symbol] A production rule within the formal grammar (e.g.
+     Yasmala) consisting of a sequence of terminal symbols or non-terminal
+     symbols. 
+\item[Word character] Letters \verb|a-zA-Z|, digits \verb|0-9| and underscore \verb|_|. 
+\item[Target language] The language which's syntax is described with Yasmala.
+\item[Grammar]  
+\item[Being grammatical] 
+\end{description}
+
+\begin{verbatim}
+Grammar
+Syntax
+Token
+Terminal Symbol = Token
+NonTerminal Symbol
+Target Language ???
+
+## (Yasmala) (formal) Grammar of SimpleCalc (Target Language)
+Program = Statement+;
+Statement = Expr `; ;
+Expr = Expr '[+-*/] Expr | Identifier `= Expr | Terminal;
+Terminal = Identifier | Literal | `( Expr `) ;
+Identifier = '[a-zA-Z0-9]'[a-zA-Z0-9_]+;
+Literal = '[0-9]+;
+
+## A SimpleCalc Program 
+\end{verbatim}
+
+\label{Notation}
+\subsection{Notation}
+
+The notation used to describe Yasmala is of course Yasmala itself. That might be
+inconvenient for bloody beginners, but it doesn't make sense to invent a new
+notation and then describe it using yet another notation, does it?
+
+\subsection{Assumed knowledge}
+It is assumed the reader has basic knowledge about meta syntaxes, regular
+expressions and common programming constructs, e.g. a for or while loop. In
+particular, it helps to know EBNF, PCRE (Perl compatible regular expressions)
+and the C programming language.
+
+\section{Motivation}
+The trigger to create Yasmala was trying to learn Perl. Perl is the Practical
+Report and Extract Language. I think the adjective practical also applies to the
+Perl documentation: http://www.perldoc.perl.org/perl.html and the book
+'Programming Perl'. These documents are too practical for my taste. They give a
+lot of good examples. However an example is always only one specif appliance. I
+find it very difficult to find out what I can do in general with a certain
+construct, or what the syntax in general is.
+
+Using plain English to describe a syntax is too cumbersome and too it's very
+difficult to be exact. I can't use BNF because those recursive rules just don't
+fit my way of thinking. I just can't grasp them quickly. EBNF is better, but
+still it's quite cumbersome for my taste. Using EBNF I always have the feeling
+that the rules do not as concisely express what I want to say as I would like to.
+More often than I like 'helper rules' are needed.
+
+The following shows typical syntax constructs a syntax meta language has to
+describe. First there's a comma separated list, where the last comma is
+optional, and the surrounding parentheses are optional. Second there's a C like
+for loop.
+
+That's the best I can think of using EBNF, given that we want all those semantic
+comments. 
+
+\begin{verbatim}
+(* comma separated list *)
+List = "(" Inner ")" | Inner;
+Inner = [ Expr { Expr } [","] ];
+
+(* c like for loop *)
+Loop = "for" "(" Expr (*Init*)     ";"
+                 Expr (*ExitCond*) ";"
+                 Expr (*Inc*)      ")" Stmt;
+\end{verbatim}
+
+That's how it looks like with Yasmala:
+
+\begin{verbatim}
+## comma separated list
+List = @`( ( Expr `, {~} )* @`) ?;
+
+## c like for loop
+Loop = 'for `( Expr#Init `; Expr#Cond `; Expr#Inc `) Stmt;
+\end{verbatim}
+
+The following is a sloppy list if ideas and thoughts which drive the creation of
+Yasmala.
+
+\begin{itemize}
+\item It is developed 80\% for my personal joy and to be useful to me, and only 20\%
+  to be useful for other people. In the 80\% I want to have a notation that
+  lets me express things in a way I like to think about things. I don't like
+  having to repeat the same thing. That because 1) I am lazy and 2) afraid of
+  bad effects of redundancy. I don't like recursions in grammars because I just
+  can't grasp them quickly. In the 20\% I tried not to make big and or foolish
+  mistakes, and not to be too far away from existing notations in the
+  non-terminal symbols I use.
+\item Give the user the power to be expressive; don't oppose artificial rules on
+  him just in order to help him not becoming too complicated. Its the task of
+  the user to decide what is well understandable.
+\item A good meta syntax should make it easy to see the basic rules
+  behind the syntax being described. It is quite hard to explain not so trivial
+  syntax grammars in a short English sentence, such that really everything is
+  said.
+\item Its mandatory that nothing outside (bold/italic fonts for
+  example) the raw syntax text specifies anything. E.g. in some meta syntaxes,
+  bold font is used for terminal symbols, italic font for non-terminal symbols.
+  Yasmala should be better.
+\item However it's not a big aim that Yasmala is very readable also without
+  syntax highlighting. I will use Yasmala mostly within Emacs, not on
+  black/white printouts where I don't even have the opportunity to apply
+  bold/italic for a primitive highlighting. But I think Yasmala turned out
+  quite readable also without any highlighting.
+\item The notation aims to resemble Perl regexes
+\item Yasmala tries to be consistent. Each symbol has always the same meaning.
+  E.g. \verb|-| always means a range. In Perl, within a regex character class,
+  it means also a range, but within the 'normal' perl program it means
+  substraction.
+\end{itemize}
+
+  
+\section{Overview} % or better 'the big picture'?
+
+Yasmala is a \textbf{meta syntax language}. It describes the syntax of another
+language, e.g. Perl, Java, Bash etc. It does that using one or more
+\textbf{rules}. Each rule is terminated by a semicolon. These last two English
+sentences are expressed by the following Yasmala rules. The details of the used
+Yasmala syntax, e.g. what the used characters \verb|= + ; `| mean, and the The
+definition of \verb|NonTerminalSymbol| and \verb|Expr|, is described later in
+this book.
+
+\begin{verbatim}
+Yasmala = Rule+;
+Rule = NonTerminalSymbol `= Expr `; ;
+\end{verbatim}
+
+Yasmala is a free-form language. That is blanks between tokens do not matter.
+
+\subsubsection{Rules}
+A rule describes a syntactic element of the language being described. Imagine a a
+simple language for a simple infix integer calculator. It has a C like syntax,
+supports the four arithmetic operations \verb|+ - * /|, parentheses,
+identifiers, assignment to identifiers and integer literals. Such a program
+consists of one or more statements. A statement is just an expression delimited
+by a semicolon. An expression has the same notation as normally used when writing
+arithmetic expressions. Identifiers have the same syntax as C identifiers.
+Expressed in Yasmala:
+
+\begin{verbatim}
+Program = Statement+;
+Statement = Expr `; ;
+Expr = Expr '[+-*/] Expr | Identifier `= Expr | Terminal;
+Terminal = Identifier | Literal | `( Expr `) ;
+Identifier = '[a-zA-Z0-9]'[a-zA-Z0-9_]+;
+Literal = '[0-9]+;
+\end{verbatim}
+
+\subsubsection{Regex Primer}
+This is really just a mini primer. The rest of the story is quasi the rest of
+this documentation. This document expects the reader to already know regular
+expressions.
+
+The \textbf{quantifiers} \verb|+ * ?| mean 'one or more', 'zero or more' and
+'zero or one' respectively. The binary operator \verb+|+ means
+\textbf{alternation}. \verb|'[0-9]| is a \textbf{character set} standing for the
+10 digit characters. Here, Yasmala's syntax differs from PCRE in that it has a
+leading single quote.
+
+\subsubsection{Terminal non-terminal}
+Two terms that are often used in the field of syntax metalanguages are terminal
+symbol and non-terminal symbol. A \textbf{terminal symbol} is a a literal string
+being part of the language described. A \textbf{non-terminal symbol} is a the
+name of a production rule. In the example above, 'Program', 'Statement', 'Expr',
+'Terminal', 'Literal' are non-terminal symbols. The semicolon \verb|;|
+terminating a statement, the math operators \verb|+ - * /| are all terminal
+symbols. So is the keyword \verb|for| in a C for-loop. \subsubsection{Semantic
+comments} It is often descriptive to add a \textbf{semantic comment}, or comment
+for short, into the grammar. A semantic comment gives a meaning meant for humans
+to the syntax nearby. Those comments are just for better understanding of the
+grammar, they have no syntactic meaning whatsoever. 
+\begin{verbatim}
+## a c like for loop
+ForLoop = 'for `( Expr#Init `; Expr#ExitCond `; Expr#Inc `) Expr;
+\end{verbatim}
+
+
+%% \emph{TODO:} However, how to express where white spaces in the target language
+%% are needed and where not? Is this simply not a task of the meta syntax but of the
+%% lexical analysis? 
+
+%% \emph{TODO:} What about repetitions/quantifiers? What is between the iterations?
+
+\chapter{Terminal symbols}
+
+\section{Quotes}
+Double quotes \verb|"|, single quotes \verb|'| , backticks \verb|`| and
+backslashes \verb|\| introduce terminal symbols. As said in \ref{Notation}, the
+used notation is Yasmala itself. Thus the start is now a bit hairy. As the table
+states, a backslash escapes the next (non-word) character.
+
+\begin{tabular}{p{2.5cm}p{8.5cm}}
+ & \\
+Syntax            & Description  \\
+\verb+\" ... \"+  & Everything within unquoted double quotes, with escape sequences substituted, constitutes a terminal; \\
+\verb+\' ... \W+  & The terminal ends before the first non-word character. \\
+\verb+\` ... (\w|\s)+  & The terminal ends before the first word- or blank character. \\
+\verb+\'\[ ... \]+& Character set, see \ref{CharSet}. \\
+\verb+\\ ...+     & A Escape sequence, see \ref{EscSeq}. \\
+ & \\
+\end{tabular}
+
+The following examples shows that after all it's actually all quite easy.
+These examples already make use escape sequences acting as quotes which are
+introduced in \ref{EscSeqQuotes}.
+
+\begin{verbatim}
+WhileLoop = 'while `( Expr `) Statement;
+UntilLoop = "until" \( Expr \) Statement;
+SpaceShipOperator = `<=> ;
+\end{verbatim}
+
+When to use which quotation is mostly a matter of personal preference. Single
+quotes \verb|'| are useful for keywords in the target language.
+Backticks \verb|`| are useful for (possibly multi-char) operators/punctuation
+in the target language. Both single quotes and backticks only need one
+delimiter character, since the end-delimiter is implicit. They are also less
+distracting than double quotes or backslashes; after all the important thing is
+the literal symbol, not the quotes needed to specify it. Double quotes \verb|"|
+are useful if the terminal symbol contains a mix of word-
+and non-word characters, or contains whites. They are also useful to write
+grammars which can be read by many because their syntactic
+meaning is understood by many, in contrast to Yasmala's single quotes or
+backticks. 
+
+\label{EscSeq}
+\section{Escape sequences}
+
+\label{EscSeqQuotes}
+\subsubsection{Quotes}
+
+A backslash followed by a non-word character stands for that non-word character
+as a literal. 
+
+\begin{verbatim}
+MathOperators = \+ | "-" | `* | \/ ;
+\end{verbatim}
+
+
+\subsubsection{Character escapes}
+
+The following escapes stand for a single character. See
+http://en.wikipedia.org/wiki/Ascii for a good reference about ASCII control
+characters. 
+
+\begin{tabular}{p{2cm}p{1cm}p{8.5cm}}
+  & \\
+Literal   & Hex  & Description  \\
+\verb|\a| & 0x07 & Bell \\
+\verb|\b| & 0x08 & Backspace \\
+\verb|\t| & 0x09 & Horizontal tab \\
+\verb|\n| & 0x0A & Newline/linefeed \\
+\verb|\f| & 0x0C & Form feed \\
+\verb|\r| & 0x0D & Carriage return \\
+\verb|\e| & 0x1B & Escape \\
+
+Syntax    &      &
+\verb|"\\x"'[a-fA-F0-9]{2,}| & & Ascii code in hex\\
+\verb|"\\0"'[0-7]+|      & & Ascii code in oct \\
+\verb|"\\c"'[A-Z[\]\^_?]|      & & Control character \\
+ & \\
+\end{tabular}
+
+Notable well-known character escapes which are \emph{not} part of Yasmala: \verb|\v|
+for vertical tab (0x0b) and \verb|\a| for alarm/bell (0x07).
+
+\subsubsection{Character classes}
+
+The following escapes stand for a character class.
+
+\begin{tabular}{p{1cm}p{9.5cm}}
+  & \\
+Literal     & Description\\
+\verb|\w| & Word character \verb|[a-zA-Z0-9_]| \\
+\verb|\W| & Non-word character \verb|[^\w]| \\
+\verb|\s| & Blank character \verb|[ \t\n\f\r\x0b]| \\
+\verb|\S| & Non-blank character \verb|[^\s]|  \\
+\verb|\h| & Horizontal blank \verb|[ \t\x0b]|\\
+\verb|\H| & Not a horizontal blank \verb|[^\h]|  \\
+\verb|\v| & Vertikal blank \verb|[\n\f\r]| \\
+\verb|\V| & Not a vertical blank \verb|[^\v]|  \\
+\verb|\d| & Digit character \verb|[0-9]| \\
+\verb|\D| & Vertical tab \verb|[^0-9]| \\
+\Verb|\A|& All characters \\
+\verb|\a| & All characters except \verb|\N|\\
+\verb|\N| & logical newline, OS independent\\
+ & \\
+\end{tabular}
+
+
+\label{CharSet}
+\section{Character sets}
+
+Characters sets are almost as PCRE character sets. One difference is that the
+syntax is slightly different. PCRE uses \verb|`[ ...`]| whereas Yasmala uses
+\verb|`'[ ...`]|. A character set specifies a set of terminal
+symbols/characters. \verb|'[abc]| is the same as \verb+"a" | "b" | "c"+. You can
+use escape sequences and the operators \verb|^| (negation) and \verb|-| (range)
+within character sets. The operators are explained in detail in \ref{??}.
+
+In short the story is this: \verb|'[a-d]| means all characters from a to d
+inclusive. That is, it is equal to \verb|'[abcd]|. \verb|'[^abc]| means all
+characters except a, b or c. \verb|'[^a-zA-Z]| means all characters except Latin
+letters. As said, escape sequences can be used, so \verb|[\^\]\-\\]| is equal to
+\verb+"^" | "]" | "-" | \\+. \verb|'[\w\-]| means all word characters plus a
+minus sign.
+
+\section{Misc}
+
+\subsection{Empty String}
+
+The empty string can be given as following : \verb|""| or \verb|()|. 
+
+\chapter{Comments}
+
+There are two types of comments: semantic comments and plain comments.
+\textbf{Semantic comments} add semantic meaning to the syntax rules. They are
+meant to be part of the description of the grammar, although only for the human
+readers. \textbf{Plain comments} are comments for the maintainers of the
+grammar. If for example a rule should be rewritten, for example because it's
+incomplete, a plain comment could state that along with the reasons. If the
+grammar would be processed with some tool which outputs a nicely formated
+document, plain comments probably wouldn't be part of that output. Semantic
+comments are more important in Yasmala, so they are also called just 'comment'
+instead 'semantic comment'.
+
+In this example, an extract from bash's grammar, the first line is a plain
+comment, the two \verb|#Condition| and \verb|#LoopVariable| are semantic
+comments.
+
+\begin{verbatim}
+#% TODO : add syntax for the 2nd form of a for loop
+LoopingCommand =
+  'until List#Condition 'do List |
+  'while List#Condition 'do List |
+  'for Name#LoopVariable ['in Word*] Del 'do List 'done;
+\end{verbatim}  
+
+\section{Semantic comments}
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+  & \\
+Syntax              & Description \\  
+\verb|`## ...|      & Everything until the end of the line is a comment \\
+\verb|`#* ... `*#|  & Everything inbetween the delimiters is a comment. \\
+\verb|`# ... (\W)|  & Everything up to the next non-word character is a comment \\
+\verb|`#^ ... (\W)| & As before, but meant to be a footnote reference, which is then explained in a longer comment nearby.\\
+ & \\
+\end{tabular}
+
+As an example an extract from bash's grammar:
+
+\begin{verbatim}
+WhileLoop = 'while List#Condition 'do List;
+  
+#* 1) init: executed once  before anything else
+   2) exit cond: tested at beginning of loop
+   3) increment: executed at end of each loop *#
+ForLoop = 'for `(( Exp#^1 `; Exp#^2 `; Exp#^3 `)) `;
+          'do List 'done ;
+          
+OutputRedirections =	
+    `>  | ## fails if file already exists,
+    `>| | ## always creates a new file
+    `>> ; ## appends if file exits
+\end{verbatim}
+
+\section{Plain comments}
+
+The syntax of plain comments is almost as the one of semantic comments, only
+that plain comments have \verb|#%| as prefix instead just \verb|#|.
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+  & \\
+Syntax               & Description \\  
+\verb|`#%% ...|      & Everything until the end of the line is a plain comment \\
+\verb|`#%* ... `*#|  & Everything inbetween the delimiters is a plain comment. \\
+\verb|`#% ... (\W)|  & Everything up to the next non-word character is a plain comment \\
+ & \\
+\end{tabular}
+
+
+\chapter{Operators}
+
+\begin{tabular}{p{2cm}p{1cm}p{8cm}}
+  & & \\
+Associativity & Arity & Precedence class\\   
+None & 1 & \verb|~ ! * + ? {}| \\
+None & 1 & \verb|^ ^^| \\
+Left & 2 & \verb|. :|\\
+Left & 2 & \verb|& /|\\
+Left & 2 & \verb|-|\\
+Left & 2 & \verb|...|\\
+Left & 2 & \verb+|+ \verb+|.+ \verb+|:+\\
+  & & \\
+\end{tabular}
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+Literal  & Description \\
+\verb|.| & Ordered concatenation \\ % is usefull for contexts where concat is not the default
+\verb|:| & Unordered concatenation, i.e. alias for \verb#exp1.exp2|exp2.exp1# \\
+\verb+|+ & Alternation / Union \\
+\verb|&| & And / Intersection \\
+\verb|/| & Relative complement / difference \\
+\verb|^| & Complement (excl \verb|\N|), alias for \verb|\a / exp| \\
+\verb|^^| & Complement (incl \verb|\N|), alias for \verb|\A / exp| \\
+\verb#|.# & Alias for \verb#exp1|exp2|(exp1.exp2)#\\
+\verb#|:# & Alias for \verb#exp1|exp2|(exp1:exp2)#\\
+\verb#|.?# & Alias for \verb#exp1|exp2|(exp1.exp2)|()#\\
+\verb#|:?# & Alias for \verb#exp1|exp2|(exp1:exp2)|()#\\
+ & \\
+\end{tabular}
+
+\begin{verbatim}
+A = a b 
+B =   b c 
+A.B -> { ab ac bb bc }
+B.A -> { ba bb ca cb }
+A:B -> { ab ac bb bc ba ca cb }
+A|B -> { a b c}
+A&B -> { b }
+A/B -> { a }
+B/A -> { c }
+\end{verbatim}
+
+Allow Unaary post/prefix of 
+Range        (as in perl range quantifier)
+Alternation  (as bison grammar)
+
+
+
+
+\section{Informal operators}
+
+
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+  & \\
+\verb|...| & Continuation or ??? \\
+\verb+|>+  & Default \\
+  & \\
+\end{tabular}
+
+
+\section{Quantifiers}
+
+Quantifiers are unary postfix operators (except for \verb|[ ]|) which specify
+how many times the preceding expression can be repeated. 
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+  & \\
+Syntax   & Description \\
+\verb|`?| & 0 or 1.\\
+\verb|`*| & 0 or more.\\
+\verb|`+| & 1 or more.\\
+\verb|`~| & Exactly 0.\\
+\verb|`!| & Exactly 1.\\
+\verb|`{ n      `}| & Exactly n \\
+\verb|`{   `- m `}| & Upto (incl.) m. \\
+\verb|`{ n `-   `}| & n or more \\
+\verb|`{ n `- m `}| & From n to (incl.) m\\
+\verb|`[ e `]| & Expression e is optional. Equal to e?\\
+  & \\
+\end{tabular}
+
+As an example an extract from Perl's grammar. Remember that Perl's identifiers
+can be at most 251 chars long.
+
+\begin{verbatim}
+Identifier = (\w-\d)\w{,250};
+Identifier = '[a-zA-Z_]'[a-zA-Z0-9_]{,250};
+\end{verbatim}  
+
+The quantifiers \verb|~ !| only make sense together with iterator quantifiers
+\ref{IterQuanti}. The range quantifier form \verb|`{ n `- m `}| is almost as in
+Perl, it's just that \verb|-| (the range operator) is used instead of \verb|,|.
+That's because Yasmala tries to use the same character for the same operator in
+all contexts. 
+
+\label{IterQuanti}
+\subsection{Iteration specific quantifiers}
+  
+\begin{verbatim}
+SimpleQuantifier = '[?*+~!];
+IterQuantifier = `{ '[lf]? SimpleQuantifier `} ;  
+\end{verbatim}
+
+If no iteration selector is given, l is asumed --> {?}, {~} are the
+often used ones for optional, no item in the last iteration
+
+
+\chapter{Future Work}
+
+These are ideas how Yasmala could further be improved.
+
+\begin{itemize}
+\item Add plain comments. In contrast to semantic comments, they would not add
+      semantic meaning / explanations to the syntax, but could be used to insert
+      notes for maintainers of the Yasmala code. E.g. 'todo' notes, if a rule is
+      not yet good enoug. Imagine a tool that takes Yasmala code as input
+      outputs nicely highlighted yasmala code. The output would naturally
+      contain the semantic comments, but not the plain comments.
+\item Add a further type of character classes, e.g. \verb|'<...>|. Within this
+      class all operators could be used. 
+\item Local rules. Maybe use Perl's \verb|my|. See also next point.
+\item Make syntax more like Perl. Allow for comma operator. Allow that = is just
+      as any other operator. A 'scope' would be file, block \verb|%{ ... %}|, rule.
+      Thus local rules would be easy \verb|Rule=..., LocRule=...;| or even
+      \verb|Rule=...(LocRule=...)...LocRule...|
+%% \item Introduce namespaces/packages. Do it as Perl. \verb|package mypack;|,
+%%       \verb|use mypack;|, \verb|main::rule = mypack::rule+;|
+\item Allow macros / subroutines / i.e. parametrized rules.
+\item More generall range quantifiers. The expression inside \verb|{...}| is
+      actuall a set of numbers defining the number of allowed repetitions. 
+\item More generall iteration quantifiers. \verb"{f?l+}". It a set of ( (set of
+      iterations) , (set of number of repetitions) )
+\item SideTree. To group elements in an additional way than the tree rooting
+      at \%start. E.g. Quotation, Literal, FlowCtrl...
+\item backrefs: \$1, \$2 etc \$mygroup
+\item anchors: \$< \$> \$\$ \$^ \$A \$b.  
+\item A few syntactic constructs cannot be expressed by grammars alone. 
+      Indicate semnatic comments which give such rules (opposed to just
+      making verbose comments about the grammar)      
+\item Escape sequencer for space (asci 0x20?). Or define that '\ ' is alwyas
+  a space, even it the actual white there is a tab, newline whatever. if it  looks like a space, it is a space.
+\item Make clear what is part of lexxer rules and what is part of grammar
+      rules. The grammar only knows tokens. Thus when I want to generate
+      different tokens with regular expressions, I have to make that clear.
+      Either with different operators used than for grammar, or to tag a whole
+      section, or the whole rule, or an expression within a rule as being part
+      of lexer.
+\end{itemize}
+
+\chapter{Yasmala in Yasmala}
+
+\begin{verbatim}
+%start
+Syntax = Rule+;
+
+Rule = NonTerminalSymbol `= Expr `; ; 
+
+## 1) implicit (ordered) concatenation
+Exp = PreUnaryOp Exp | Exp Quantifier |
+      Exp BinaryOp Exp | Exp Exp #^1 |
+      Terminal;
+
+## 1) Implicitely gives the expression a name,
+##    which is a number starting at 1, counting up
+##    at each opening paranthesis.
+## 2) Optional expression, same as "Exp?"
+Terminal = NonTerminalSymbol | TerminalSymobl |
+  `( Exp `) #^1 | `[ Exp `]  #^2
+  
+TerminalSymobl =  EscapeSeq | CharSet | TerminalString |
+  \'Word |       ## usefull for keywords
+  \`'[^\w\s]+ ; ## usefull for (multi-char) oprators
+  
+TerminalString =
+  %simple
+  `" ... `"
+  %exact
+  `" ( '[^\\] | EscSeq )* `" ;
+  
+## E.g. "'[^ab0-2]" means all characters except a,b,0,1,2.
+## Stated differntly in Yasmala :
+## "^( 'a | 'b | '0 | '1 | '2 )"
+CharSet =
+  %simple
+  `'[ ... `] 
+  %exact
+  `'[ CSExp `];
+  
+## Char Set expression
+CSExp  =
+  CSExp CSExp    | ## implicit alternation
+  CSExp `- CSExp | ## range
+  `^ CSExp       | ## not
+  '[^\\\^\-]     | ## any char but \ ^ -
+  EscapeSeq;
+  
+## Escape Sequence. For 
+EscSeq =
+  ## quote the character following the backslash
+  \\'[^\w\s]       |
+  
+  ## character escapes. The non printable chars
+  ## are: 0 null, a bell/alarm, b backspace, t hor
+  ## tab, n linefeed/ newline, v ver tab, f form
+  ## feed, r carriage return, e escape.
+  `\  '[0abtnvfre]     | ## non printable chars
+  `\x '[a-fA-F0-9]{2,} | ## ascii code in hex
+  `\0 '[0-7]+          | ## ascii code in oct
+  `\c '[A-Z\^_?[\]]    | ## control character
+  
+  ## character sets: w word, s blank, h horizontal
+  ## blank, v vertikal blank, d digit. Upercase
+  ## means not, i.e. W is not word.
+  \\'[wWsShHvVdD];
+       
+PreUnaryOp =
+  `^       | ## Not
+  `~~      | ## Pal 
+  
+BinaryOp = 
+  `.   | ## (unordered) concatenation
+  `:   | ## ordered Concatenation
+  `|   ; ## Union/Or/Alternation
+  `/   | ## Exclusive/Except
+  `&   | ## Intersection/And
+  `-   | ## Range
+  `|.  | ## equal to exp1|exp2|exp1.exp2
+  `|:  | ## equal to exp2|exp2|exp1:exp2 
+  `... | ## sequence of 'arbitrary' symbols
+
+## How many times the preceding expr may repeat
+Quantifier = SimpleQuantifier | RangeQuantifier
+             IterSpecificQunatifier;
+           
+SimpleQuantifier =           
+  `? | ## 0 or 1
+  `+ | ## 1 or more
+  `* | ## 0 or more
+   Num#n ; ## exactly n
+  
+RangeQuantifier =  
+   %simple
+  `{ Num#n          `} | ## exactly n
+  `{ Num#n `- Num#m `} | ## from n to m incl.
+  `{       `- Num#m `} | ## from 0 to m incl.
+  `{ Num#n `-       `} ; ## more than n
+   %exact
+  `{ RQExp `} 
+  
+  RQExp =
+    RQExp `- RQExp | 
+    RQExp `| RQExp |
+    RQExp RQExp | ## implicit alternation
+    `( `RQExp `) | Num;
+  
+## IterationSpecific. E.g. "List = ( Expr `, {~} )*;"
+## is a comma separated list, where there may not be
+## a trailing comma.
+## The quantifier in 2) only applys to the iteration 
+## specified by 1). In all other iteration the
+## expression might appear exactly once. When 1) is
+## ommited, it defaults to l.
+IterSpecificQunatifier =  
+  %simple
+  `l0 | ## not in last iteration
+  `l? | ## optional in last iteration
+
+  %complex
+  "iq/" '[lf]#^1 SimpleQuantifier#^2 "/";
+  
+Word = \w+;  
+  
+%lex Ignored = SemanticComment | PlainComment | Directive | Blank+;
+%lex TerminalSymbol = see abocve
+%lex Num = \d+;
+%lex Operator = '[]+
+%lex NonTerminalSymbol = '[a-zA-Z_]'[a-zA-Z0-9_]+;
+        
+The opening/closing delimiters of character classes are
+more like operators? Since within there are arbitrary expressions.
+           
+## Attach semantic meaning to (parts) of the syntax
+SemanticComment = 
+  %simple                
+  "##" ...      |   ## Comment until end of line
+  "#^"Word     |   ## Footnote to which a following text can refer to
+  \#Word      |   ## Inline comment
+  "#*"..."*#"  ;   ## Inline comment, possibly multiline
+  %exact
+  "##".*?nl |
+  "#^"Word |
+  "#"Word |
+  "#*".*?"*#"  ;   ## i.e. closing *# cannot be escaped
+  
+Blank = '[ \t\n\r];
+      
+## newline sequence  
+nl = \n #unix | \r\n #dos_windows | \r #mac ;
+
+%sidetree
+EmptyString = `"" | `( `) ;
+
+## Comments in the syntax source textfile that will not appear in 
+## the printed representation.
+PlainComment =
+  "%%"...      |   ## Comment until end of line
+  "%"Word      |   ## Inline comment
+  "%*"..."*%"  ;   ## Inline comment, possibly multiline 
+
+\end{verbatim}
+
+
+\chapter{Biblio}
+
+- there are already to many syantxes
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+\verb|.| & Ordered concatenation. Implicit between two directly adjancted expressions.\\
+\verb|:| & Concatenation unordered; either first exp1
+  then exp2 or vice versa. Syntactic sugar. Short for
+  (exp1.exp2)|(exp2.exp1). Mnemonic : is somehow, figuratively, in
+  the middle of . and |. CONCAT, either so OR so.\\
+\verb+|+Exp= & Alternation/Union.  Member of set1 or any member of
+  set2.\\
+\verb+|>+ & Short for |(exp){d}. Memennic > points to the
+  special/important/default element.\\
+\verb|&| & Intersection(set term)/and. Any string that is in set1 and set2. \\
+\verb|/| & Relative complement, difference. All elements of exp1 which are not
+  also elements of exp2. Complement can be usefull E.g. for 'SimpleGenericRule /
+  Exception'. \\
+
+\verb|^| & Complement. Probably only interesting for character sets.\\
+\verb|^^| & Pal operator.\\
+\end{tabular}
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+\verb#Exp|.Exp# & Alias for \verb#exp1|exp2|(exp1.exp2)#\\
+\verb#Exp|:Exp# & Alias for \verb#exp1|exp2|(exp1:exp2)#\\
+\end{tabular}
+
+\verb|()| denotes the empty string. 
+
+Exclusive-or is not available, and not a common operator in set theory
+anyway. Can be mimmiced by \emph{Todo:} anyway.
+
+\emph{Todo:} Shold things like \verb|(|| or \verb||)| etc, also with other
+binary operators, define empty string? Would be convenient, intuitive, but
+removes the possibility to introduce more meta symbols/tokens.  For the same
+reason don't let \verb|"" '' ``| count as empty string, also because of
+inability to interprete these symbol sequence another way.
+
+\emph{Todo:} How about a symbol for the empty set (set, not string)? Not needed
+i guess. If so, then maybe use \verb|()| for the empty set and neverthelless
+\verb|""| for the emtpy string.
+
+\chapter{Miscellaneous}
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+\verb|Ident `= Exp| & Defines a rule.\\
+\verb|`( Exp `)| & a) Grouping b) overwrites precedence \\
+\verb|Word<,>| & Macro def paramenter list / macro call argument list. Borrowed
+  from C++; templates are somewhat similar to macros.\\
+\verb|~Exp| & Replaces all elements with their counterparts. \verb|( { < [| with \verb|) } > ]|. 
+  Everything else is left as is.\\
+\verb|Exp-Exp| & Range. \\
+\verb|Exp...Exp| & Alias for \verb|\a*|.\\
+\verb|Exp....Exp| & For simple rules to indicate contunation after the same principle.\\
+\end{tabular}
+
+\begin{verbatim}
+OpenDel(^(EscStart|CloseDel)|Escapes)*CloseDel  
+\end{verbatim}
+
+\emph{TODO:} Multiple definitions for the same rule(-identifier)
+ - because of multiple contexts
+ - because of multiple detail/complexity levels of the rule. These levels must be
+comparable to be orderable, see below.
+
+\emph{TODO:} A tool processing a grammar written Yamala can be configured which of the
+multiple definitions it takes. Mostly tools will want to use to most precise
+one, while human beginners might first look at the most simple one.
+ 
+\emph{TODO:} Allow for (word:=exp) as an alternative way to @WordExp?
+
+\emph{TODO:} Short for counterpart<exp,list,list>.
+
+
+Terminal symbol context:
+
+
+\end{document}
+
+Plain comment context:
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+ & \\
+\verb|%%...| & Until end of line.\\
+\verb|%*...*%| & Inline. Can be multiple lines long.\\
+\verb|%Word| & Inline.\\
+ & \\
+\end{tabular}
+
+Directive context:
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+ & \\
+\verb|$$...| & Until end of line.\\
+\verb|$*...*$| & Inline. Can be multiple lines long.\\
+\verb|$Word2| & ????\\
+ & \\
+\end{tabular}
+\begin{verbatim}
+$^ beginning of line anchor
+$$ end of line anchor
+   beginning of file anchor
+   end of file anchor
+\end{verbatim}
+
+\begin{verbatim}
+Word=`0-9a-zA-Z\_`+
+Word2=Identifier\<(Identifier\,{l?})*\>
+\end{verbatim}
+
+Precisely speaking, there are even sub-contexts within these
+contexts. E.g. escape sequences, parameter list, qualifier context etc.
+
+
+
+
+\section{Identifiers / Variables / Backreferences / Tagging}
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+\verb|@Word| & Tags the following expression. You can think of it as naming an
+  inline rule. Word can be left away. The scope is the enclosing rule.
+\end{tabular}
+
+\1 \2 (e1) (e2) \1 
+e1_1 e2_1 e1_1 e2_1 e1_1 |
+e1_1 e2_2 e1_1 e2_2 e1_1 |
+e1_1 e2_. e1_1 e2_. e1_1 |
+e1_2 e2_1 e1_2 e2_1 e1_2 ...
+
+All backreferences have the same value in each turn.
+
+
+( (`,{f?} bla) elt \1 )*
+
+Das ganze Spiel fuer jede IteratorGruppe mit demselben qualifier, i.e.
+der innhalt (klar es set von terminal strings) muss bekannt und gleich sein.
+
+Overloading is allowed when identifiers have same name, but differ by
+number of arguments.
+
+\emph{TODO:} Default values for macro arguments
+
+\emph{TODO:} Convention for naming? 
+locals: first char lower, else camel
+globals: first char upper, else all camel
+            
+
+\section{Quantifiers}
+Quantifiers describe how how many times an expression is repeated. The
+following is a list of available quanitfiers.
+
+\section{Named/tagged expressions}
+
+1) To copy/paste expressions (Mmmmh, actually the same as backref within
+regexs).
+2) To attach one quantifier to multiple expressions.
+
+All expressions with same tag are repeated as specifified by the given
+quantifier. The number of actual repetions is the same for all these
+expressions. Name can be ommited.
+
+It's an error if this ends in an expression having multiple quantifiers.
+@exp1 @exp2? @exp3*
+
+This should work. 
+@exp1 (@exp2? exp3)+
+After all its equal to (i.e write new expressions, using |, with all possibilities)
+exp1 (exp2 exp3)+ | (exp3)+
+
+
+\begin{verbatim}
+Expr = TaggedExpr | ...;        
+        
+TaggedExpr =         
+  "(?<"Name">" Exp ")" | ## As in pcre
+  "("Exp")"            | ## As in pcre. Name is 1,2,...      
+  "(?:"Exp")"          | ## As in pcre. Non capturing group.        
+  (\@[Name])*Exp       | ## If Name not given, "" is used.
+  Exp[\@[Name]]UnPostOp; ## Is this syntax really needed?
+
+BackRef =
+  \\[1-9]+ |       ## As in pcre. The number is the name. 0 not usable
+                   ## because \0.. is used for octal numbers.
+  "\g{"[Name]"}" | ## As in pcre     
+  "\k<"[Name]">" | ## As in pcre     
+  "@>"[Name];      ## If Name not given, "" is used.
+        
+If expression is an identifier, you have to use () to sepratete tag name
+form identifier @tag(identifier). [Point is not possible, because
+@tag.identifier could also mean the expression @tag (paste) concatenated
+with identifier)
+        
+Name1 : to which groups exp belongs
+Name2 : As Name1 plus additioanly to which groups the quantifier applies                
+        
+A Qualifier without a tag, but behind an expression that has tags,
+assumes that it applies only to those tags. Use (@exp)quantifier to
+avoid that.
+        
+exp@? is not equal to exp @? (which is equal to exp.@?)        
+        
+@\"exp\"@?                 
+@\"exp@\"?    syntactic variant
+
+@'[\"'`]exp@   shorthand for "exp"|'exp'|`exp`                          
+@'[\"'`]exp@?  shorthand for "exp"|'exp'|`exp`|exp
+        
+@\(exp\)@?                 
+@\(exp@\)?   syntactic variant              
+        
+@'[<{(]exp~@? shorthand for <exp>|{exp}|(exp)|exp
+\end{verbatim}
+
+\section{Anchors}
+
+Anchors might not really be needed, because a (context free) rule doesn't know
+where it is. That is given by other rules wich include the first rule.
+
+However it is surely useful in not exact rules (\$simple,...).
+
+Its surely usefully for ...(\n|$z) (up to end of line)
+
+\begin{tabular}{p{2cm}p{9.5cm}}
+^ 
+\$
+>
+< 
+b  Match a word boundary
+B  Match except at a word boundary
+A  Match only at beginning of string
+Z  Match only at end of string, or before newline at the end
+z  Match only at end of string
+
+\end{tabular}
+
+
+\chapter{Terminal symbol context}
+
+\section{String}
+
+\section{Character class}
+To conveniently specify a set of terminal symbals, i.e. a set of symbol strings
+with length one. Since alternation context does basically the same but with more
+powerfull operations, which of course need non terminal symbols acting as
+operators, character class context is convenient when you want to list terminal
+punctuation symbols in the character class.
+
+\section{Alternation context}
+
+\begin{itemize}
+\item Alternation instead concatenation is implicit between expressions.
+\item Alternation becomes a higher precedence than concatenation.
+\item Only punctuation symbols are nonterminal, all other are terminal symbols.
+\item \verb|"..."| now defines nonterminal symbols instead terminal symbols.
+\end{itemize}
+
+\section{Escape sequences}
+
+Overallrule: Only the characters \verb|a-zA-Z0-9| (following $\backslash$) have
+a special meaning. All others are taken as literals, the backslashed removed.
+Using an unkown escape is a syntax error (that enables to add future sequences).
+The length of the sequence is not given by an actual rules, thus actually whe
+have a list of escape strings, not chars. Maybe thats why they are named
+sequences.
+
+\subsection{ascii/unicode escapes / nonprintable / single characters}
+Special: tab underline space hortab.
+
+\subsection{Character classes}
+
+
+\chapter{Semantic/comment context}
+
+\chapter{Terminal context}
+  
+  The alphabet of the formal language must be described by the formal
+  grammar. 
+  
+  This metasyntax only describes how to distinguis terminal symbols from
+  nonterminal symbols. 
+  
+\chapter{Tips}
+  As in my regex context, the simple version of a rule might be
+  
+\chapter{Symbol overview}
+  
+  % discussion
+  \begin{verbatim}
+  Anchors
+  
+  BOL
+  ^ pcre
+  
+  EOL
+  $ pcre
+  
+  BOF
+  
+  EOF
+  
+  
+  Sets
+  
+  Not : 
+  ^ because of pcre char negation operator, Math
+  ! C , Math
+  ~ C , Math
+  
+  And :
+  & C , Math
+  
+  Or :
+  | C , Math
+  
+  Exclusive :
+  / Math
+  	 
+  \end{verbatim}
+  
+  \begin{verbatim}
+  global symbols = context symbols -> c
+  grammar symbols: q quantifiers, m misc, s sets
+  
+  c introduce specific context
+  m miscellaneous
+  q quantifiers
+  s set operations.
+    
+      std      char  | term   
+  ----------------------------
+  ~| c       | ------|
+  !|     q   | ------|
+  @|     q   | ------|
+  #| c       | ------|
+  $| --------| x     |
+  %| c       | ------|     
+  ^|       s |   s   |
+  &|       s |   s   |
+  *|     q   | ------|
+  (|   m     | x     |
+  )|   m     | x     |
+  _| --------| ------|
+  +|     q   | ------|
+  {|     q   | ------|
+  }|     q   | ------|
+  :|   m   ss| ------|
+  "| c       | ------|
+  ||       s |   s   |
+  <|   m     | ------|
+  >|   m     | ------|
+  ?|     q   | ------|
+  `| c       | ------|
+  -| c       | x     |
+  =|   m     | ------|
+  [|     q   | ------|
+  ]|     q   | ------|
+  ;| --------| ------|  
+  '| c       | ------|
+  \| c       | x     |
+  ,|   m     | ------|
+  .|       ss| ------|
+  /|       s | ------|
+          
+  Note: as in -> , <=>, ??, ++ etc etc we can also make multip char operators.         
+          
+  \end{verbatim}
+  
+  
+\chapter{Reference tables}
+  
+  List of meta symbols
+  
+  arity
+  precedenceno
+  associativity
+  
+\chapter{Yasmala in Yasmala}
+  
+  
+  
+\chapter{Examples}
+  
+  \begin{verbatim}
+  
+  ---TODO--- More consise, defaults embedded
+  
+  UserQuanifier = 
+    \{ Count \} |                    ## exacty m
+    \{\, Digit+#To \} |              ## 0 to n inclusive
+    \{ Digit+#From \, Digit+#To \} | ## m or more
+    \{ Digit+#From \, Digit+#To \};  ## from m to n, m and n inclusive
+  
+  UserQuanifier = 
+    \{ m \} |    ## exacty m
+    \{ \, n \} | ## 0 to n inclusive
+    \{ m \, \} | ## m or more
+    \{ m \, n \}; ## from m to n, m and n inclusive
+                 
+    m,n := `0-9`+;
+  
+  UserQuanifier = 
+    \{ m \}               |   ## exacty m
+    \{ (m|>'0') \, n ) \};    ## from m to n, m and n inclusive
+  
+    m,n := `0-9`+;
+  
+  QuantifierRange = '{-' n \, m [\| n2 \, m2 [...]] \}
+  
+  QuantifierRange = '{-' ( el \|{l?} )+ \); 
+    el := m | (m|>'0') \, n | m \,; 
+    m,n := `0-9`+;
+  
+  QuantifierRange = '{-'((\d+|(\d+|>'0')\,\d+|\d+\,)\|{l?})+\); 
+  
+  
+  %%------------------------------------------------------------------------------
+  
+  Std::Quote<OpenDel,CloseDel,EscStart,Escapes> = 
+    OpenDel(^(EscStart|CloseDel)|Escapes)*CloseDel;  
+  
+  Std::Quote2Arg<OpenDel,MiddleDel,CloseDel,EscStart,Escapes> = 
+    OpenDel(^(EscStart|MiddleDel)|Escapes)*MiddleDel
+           (^(EscStart|CloseDel )|Escapes)*CloseDel ;  
+  
+  Quote<OpenDel,CloseDel> = Std::Quote<OpenDel,CloseDel,\\,Escapes>;
+  
+  Quote2Arg<Del> = Std::Quote2Arg<Del,Del,Del,\\,Escapes>;  
+  
+  
+  ## Simple
+  Quote = 
+    QuoteUnaryOp \a ... \a         | ## 1 Argument
+    QuoteBinaryOp \a ... \a ... \a   ## 2 Arguments
+  
+  ## Medium
+  Quote = 
+    [QuoteUnaryOp|>'m'] . @D1(DelChar)...~D1 |
+  
+    QuoteBinaryOp . ( 
+      @D2(DelChar)...D2...D2 |
+      @D3(OpenHugDelChar)...~D3 . @D4(DelChar)...~D4 );
+  
+  ## Exact
+  Quote = 
+    [QuoteUnaryOp|>'m'] . Quote<DelChar> |
+  
+    QuoteBinaryOp . (
+      Quote2Arg<DelChar>#Arg1And2  |
+      Quote<OpenHugDelChar>#Arg1 Quote<DelChar>#Arg2
+  
+  DelChar = ^'\n\s{[<(';
+  
+  OpenHugDelChar = '([<{';
+  
+  QuoteUnaryOp = `qx` | "xx" | "qq";
+  
+  QuoteBinaryOp = `s`;
+  
+  Test = [ String ("=~"|"!~")] \m\/ RegexLiteral \/ RegexOption*
+  
+  %%------------------------------------------------------------------------------
+  
+  List = @\( (Exp#Element \,{?})* @\)?; 
+  
+  List = (Pipe ("&&"#or|"||"#and){f~})+ [\&#async|>\;#sync];
+  
+  Pipe = "time" "-p"? |. ( Command \|{f~} )*;
+  
+  Command = (SimpleCommand | CompoundCommand) Redirection*#^1;
+  
+  SimpleCommand = VarAssignment* |. Word#Command Word#Args*;
+  
+  VarAssignment = Word#VariableName\=Word#Value;
+  
+  CompoundCommand =
+  
+    ## for-loop 1
+    "for" Word#VarName ["in" Word*#List|>"in "\"$@\"] SD 
+    "do" List* "done" |
+  
+    ## for-loop 2
+    "for" "((" [Expr#Init] \; [Expr#Test] \; [Expr#Inc] "))" SD
+    "do" List* "done" |
+    
+    ## while loop
+    "while" List#Test SD "do" List* "done" | 
+  
+    \( List* \) | ## Executed within subshell
+  
+    \{ List* SD \}; ## Executed within same shell
+  
+  
+  %%------------------------------------------------------------------------------
+    
+  $begin
+  NumLiteral = 
+    M1<`1-9`,DecDigit> | ## base 10, i.e. decimal
+    M2<"0b" ,BinDigit> | ## base 2, i.e. binary
+    M1<"0"  ,OctDigit> | ## base 8, i.e. octal
+    M2<"0x" ,HexDigit>;  ## base 16, i.e. hexadecimal
+  
+    M1<Radix,Digit> := Radix(Digit\_*)*
+    M2<Radix,Digit> := Radix(Digit\_*)+
+  $end
+  
+  
+  NumLiteral = 
+    `1-9`(`0-9`      (\_)*)* | ## base 10, i.e. decimal
+    "0b" (`01`       (\_)*)+ | ## base 2, i.e. binary
+    "0"  (`0-7`      (\_)*)* | ## base 8, i.e. octal
+    "0x" (`0-9a-fA-F`(\_)*)+;  ## base 16, i.e. hexadecimal
+  
+  %%------------------------------------------------------------------------------
+  
+\end{verbatim}
+  
+\chapter{Typesetting}
+  To enhance the readability
+  
+  \begin{itemize}
+  \item Use different fonts/bold/italic/backgrounds for the different contexts.
+  \item Optionally remove the delimiters since they are now redundant in the printed form
+  \item Optionally replace spaces underscores by escape sequences if needed to be seen.
+  \item Semantic Footnote as superscript
+  \item Semantic inline as subscript.
+  \end{itemize}
+  
+\chapter{Todo}
+  
+  Rules which semtic belong to which sets / terminal symbols. E.g. use
+  a) Numbered list for semantics of specific logical lines b) use
+  'footnotes' for semantics appearing at different places in one 'block'.  Rules
+  how to specifiy semantic groups (see bash redirections) How to specifiy context
+  How to specify return type (which includes wheter its an rvalue or lvalue or
+  non-lvalue) Common sideeffects, such as list of predefined variables which are
+  read/written.  Tag definitions which are known to define inprecise syntax
+  (e.g. often floating point literal)
+  
+  For each operation, say what it is actually an abreviation for.
+  
+\chapter{Theory}
+  
+\section{Distinguish notation(syntax/semantic) / target terminal }
+
+\begin{description}
+\item[formal language] A language that is described by a formal grammar.
+\item[syntax (of a formal language)] The study of the rules
+  that govern the structure of a formal language. See formal grammar.
+\item[semantic] The meaning, commonly expressed in plain English, of
+  specific strings of the formal language. Often semantic is attached
+  to the rules defined in the formal grammar. 
+\item[formal grammar] Consists of two parts: generative grammar and
+  analytic grammar.
+\item[generative grammar]
+  \begin{itemize}
+  \item Definition of a terminal symbol alphabet
+  \item Definition of a nonterminal symbol alphabet
+  \item Definition of a set of rules that specify how to generate
+    strings (over terminal symbol alphabet) belonging to the formal
+    language.
+  \end{itemize}
+\item[analytic grammar]Describe how to recognizer if a given strings
+  belongs to a given formal language.
+\item[alphabet] Finite set of distinct characters.
+\item[character] Smallest unit in formal languages. a b c are typical characters.
+\item[symbol] Here a synonym for character.
+\item[string] A sequence of characters.
+\item[terminal symbol] A symbol in the alphabet of the formal language.
+\item[nonterminal symbol] A symobl in the alphabet of the formal grammar.
+\end{description}
+
+\begin{comment}
+  
+Metasyntax : This document, EBNF, BNF, ...
+   |
+   |
+   |
+   V
+1) Formal Grammar = Syntax of formal language             Perl-Documentation, C++-Documentation
+2) ???? : Attach semantics to strings of the formal language described
+by the formal grammar. 
+   |
+   | describes
+   |
+   V
+Formal Language: Perl-Code, C++-Code
+String build of terminal symbols beeing part of set described by syntax.
+
+
+Grammar is a set of rules. Most rules have a name. RuleName =
+RuleDescription. Nonterminal symbols describe how to combine terminal
+symbols to a set of strings constituting the rule. Each rule has a
+text describing the semantics of that rule attached. In case the used
+names are already very clear, that text might be ommited.
+
+Some ruleparts can have embedded semantic notes. That form might be
+easier to write/read than creating
+
+Expr = Rule.
+
+
+NonTerminalSymbol		
+   SyntaxDescribingSymbol
+   EmbeddedSemanticDescribingSymbol       Also for any notes about syntax rules.
+
+TerminalSymbol                    To clearly separate use different background or underline
+   PlainTerminalSymboln
+   NonprintingTerminalSymbol      Only for the anscicquoting (i.e. just italic/bold font would be good enough)
+   
+
+\end{comment}
+
+\begin{comment}
+Purpose of syntax notation
+The 'formula' defines the syntax. Semantics are not addressed, they are written afterwards in plain text. I.e. at the end it 
+- defines which sequence of terminal characters is valid
+- what semantics a certain sequence of terminal characters has
+
+E.g. the following defines that the sequence of terminal chars "myvar" is something called "identifier" which has the semantics "The semantics are ..."
+Identifier := (_|Letter)(Letter|Digit|_)+	The semantics are ...
+Letter := a-zA-Z
+Digit := 0-9
+
+Its about defining which strings composed of literal characters. Its
+about which sequence of literal chars is which string. Each string has
+a semantic meaning. More generally, each set of strings has a semantic meaning.
+\end{comment}
+
+\begin{comment}
+Formal languages generaly have two aspects: syntax and semantic of the
+language.
+
+1) Syntax: how the language looks like. Set of possible expressions
+that are valid utterances. Formal grammar defines the set of string
+which form the formal language.
+
+2) Semantic: What the utterances mean.
+
+Two main categories of formal grammars: 
+
+1) generative grammar: set of
+rules for how strings in the language can be generated 
+
+2) analytic grammar: set of rules to determine wheter a string is in
+the language
+
+Formal Definition by Chomsky
+L(G)		L is the language denoted by G
+G=(N,E,P,S)	G is the formal grammar
+N		finite set of nonterminal symbols, I.e. symbols to describe L
+E		finite set of terminal symbols, I.e. symbols beeing part of L. Disjoint from N
+P		Set of production rules
+S		Start symbol, element of N
+
+Production rule
+(E
+
+Special grammars:
+1) Context free grammar: LHS of production rule consists of only a single nonterminal symbol.
+2) Regular grammar: A context free grammar, which in addition the RHS might only be one of a) the empty string b) single terminal symbol c) single terminal symbol followed by a nonterminal symbol. Languages with a regular grammar can be recognized in linear time by a finite state machine. 
+Formal language theory
+Only concerned about syntax. Semantic is not looked at. A formal language consists of:
+1) Alphabet: Set of symbols
+2) Rules of syntax: Set of rules that a string of these symbols must follow to be considered part of the formal language.
+\end{comment}
+
+\chapter{Tools}
+When html is generated (or any markup language which is capable of
+links/references) then 
+- Identifiers link to their definition
+- Operators link to their definition in the yasmala help file 
+
+
+\end{document}
+
+
+In this document, ""must"" / ""must not"", ""should"" / ""should not"", and
+""may"" have their conventional (cf. RFC 2119) meanings: ""X must do Y"" means
+that if X doesn't do Y, it's against this specification, and should really be
+fixed. ""X should do Y"" means that it's recommended, but X may fail to do Y, if
+there's a good reason. ""X may do Y"" is merely a note that X can do Y at will
+(although it is up to the reader to detect any connotation of "and I think it
+would be nice if X did Y"" versus ""it wouldn't really bother me if X did Y").
+
+
+Iterator Quantifiers
+\begin{tabular}{p{2cm}p{9.5cm}}
+\verb|f m l a n| & Identify iteration: first middles last all none\\
+\verb|F M L A N| & Identify iteration: not (first, middles, last, all).\\
+\verb|d| & Default. Somehow like iteration zero. The semantic of default is that
+  if nothing has been supplied is as if the given default had been supplied. It
+  the deault automatically inserted. See also |>.  [exp1|>exp2] Normal
+  case. Exp2 must be valid to be explicitely given.  [exp1 exp2{~d}] If nothing
+  is supplied, exp2 is assumed, but exp2 might not be valid to be explicitely
+  given.\\
+\verb|????| & Only if exp evaluates to true quantifier is applied.\\
+\end{tabular}

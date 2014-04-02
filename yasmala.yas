@@ -1,0 +1,166 @@
+#%% character encoding: UTF-8
+#%%
+#%% Metasyntax for Yasmala, defined with Yasmala
+#%% ============================================
+#%% 
+#%% Yasmala (C) by Florian Kaufmann is licensed under a Creative Commons
+#%% Attribution-ShareAlike 4.0 International License.
+#%%
+#%% You should have received a copy of the license along with this work. If
+#%% not, see <http://creativecommons.org/licenses/by-sa/4.0/>.
+#%%
+#%%
+#%% This document is currently only in brainstorming quality.
+
+%start           
+Yasmala = Rule+;
+        
+Rule = Identifier `= LExp `; ;
+           
+LExp2 = LExp LBinOp LExp | LUnPreOp LExp | LExp LUnPostOp |
+  `( LExp `) | Identifier | Literal ;
+      
+Literal = LiteralString | LiteralCharSet;
+
+                              
+LiteralString  = 
+ %simple
+ `'* ... `*' | 
+ `'' ...     | 
+ \'\w+       |
+ 
+ `" ... `"   | 
+ \`\S+       |
+ 
+ %full
+ ## for "..." / /*...*/. The actual literal being in in tagged group
+ (\"|\'\*) @((LTermElt/^^\1)*) ^^\1 | 
+ ## for ''... . The actual literal being in in tagged group
+ \'\' @((\a/\n)*) \n  | 
+ ## 
+ #%% TODO: The word ones with or without escape sequences???
+ \'\w+       |
+ \`\S+ ;
+
+LiteralCharSet =
+ EscapeSeq   |                 
+ %simple
+ `'[ ... `]   | 
+ `'< ... `>   | ## alternation context 
+ 
+ %full
+ ## for '[...]. The literal charset being in the tagged group
+ \'\[ @((\]?(LTermElt/\])*) / ()) \];
+         
+EscapeSeq =
+  ## character sets (as perl)          
+  `\w | ## word =  '[a-zA-Z0-9_] 
+  `\W | ## not word 
+  `\s | ## white space =  '[ \t\n]
+  `\S | ## not white space 
+  `\d | ## digit '[0-9]
+  `\D | ## not digit
+  `\a | ## all
+  
+  ## nonprintable characers
+  `\0 | ## null char
+  `\a | ## null char
+  `\b | ## null char
+  `\t | ## null char
+  `\n | ## newline  
+  
+  ## characters by their ascii code / name
+  "\x"n | ## where =cc= is a hex number
+  "\x{"n\} | ## wide hex
+  "\o"n | ## where =ooo= is a oct number !! this is not standart !!
+  "\N{"name\} | ## unicode
+  "\c"x | ## control char
+  
+  ## backreferencing
+  \\n | ## where n is a number referincg a group
+  
+  ## quoting
+  \\\W ; ##
+  
+
+#%% !!! I need unspecified Identifiers for simple rules. They are specified in semantic context
+    
+## "Language " (word set) operations
+LBinOp    = SBinOp | `. #*concat*# | `: #*unordered concat*# | `|. | `|: ;            
+LUnPreOp  = SUnPreOp | `^^ #Gspoenli;
+LUnPostOp = SUnPostOp;
+
+#%% quantifiers are lazy?? \"\a*\" is ok? Doesn't need to be \"(\a/\")*\"???          
+#%% but what if its not simply \a but an indentifier? Internally that one can be
+#%% arbitrary complex? Looking at generating rules of formal grammars, (\a/\")is probably needed.
+          
+## general set operations          
+BinOp    = `& #intersection | `| #union | `/ #exception | `- #Range;
+UnPreOp  = `^ #negation | TagList;
+UnPostOp = TagList? (NamedQuanti | Quantifier);
+            
+## Quantifier stuff.            
+Quantifier =
+  ##  =n= and =m= are digits        
+  %simple         
+  n         | ## repeat exactly n times
+  `{ n `- m `} | ## repeat between n to m times inclusive 
+  `{ `- m `}  | ## repeat up m times inclusive
+  
+  "{0}"  | ## not in the last iteration    
+  "{?}"  | ## optional in the last iteration  
+  "{f0}" | ## not in the first iteration
+  "{f?}" | ## optional in the first iteration   
+    
+  %medium  
+  
+  %full
+  `{ @n(\d+) \- @m(\d+) `} 
+  `{ ((IterSet\.){f?}QuantiSet\,{?})+ `} ; ## dont allow 0, {} might be usefull            
+   
+NamedIter = '[aAnNfFmMlL]; 
+NamedQuanti = \d+ | \+ #1OrMore | \* #0OrMore | \? #0Or1;
+
+
+Identifier = '[a-zA-Z_]'[a-zA-Z_0-9]*; ## non terminal symbol
+LTermElt = EscapeSeq | (\a / \\);
+
+## Add expression to the expression group with the given name. There's also an
+## unnamed group.
+TagList = (\@Identifier{f?})+;
+
+myfunc <> = sdfa;
+
+       
+## Demo of Yasmala taking bash as use case
+## --------------------------------------------------------------------------------
+       
+Script = List;       
+Token = Operator|Word;## A sequence of characters considered a single unit by the shell        
+Operator = ControlOperator|RedirectionOperator;
+ControlOperator = \n | `|| | `&& | `& | `; | `;; | `|  | `( | `) ;
+Word = ;        ## A token that is not an operator is a word         
+MetaCharacter = Blank | \& | \; | \( | \) | \< | \>;  	## When unquated, separates words.
+Blank = " " | \t;
+Name = '[a-zA-Z_]'[0-9a-zA-Z_]*;
+Identifier = Name;                
+KeyWord = ReservedWord; ## A word that has a special meaning to the shell        
+ReservedWord =
+  `! | `[[ | `]] | `{ | `} | 
+  'case | 'do | 'done | 'elif | 'else | 'esac |
+  'fi | 'for | 'function | 'if | 'in | 'select |
+  'then | 'time | 'until | 'while;
+Command = ( SimpleCommand | CompoundCommand ) [Redirections#^1];
+SimpleCommand =
+  VariableAssignmentList |. (Word#Commandname Word*#Arguments);
+CompoundCommand = 	
+  `( List `) |            ## Executed in subshell.  
+  `{ List `} |            ## Executed in current shell. 
+  `(( ArithmeticExp `)) | ## Arithmetic evaluation 
+  `[[ CondExp `]] |	      ## Conditional Expression. 
+  FlowControlCommand;     ## See chapter flow control
+Pipe = ['time [`-p ]] [\! #NegExit] (Command \|{~} )+;  
+List           = SubList+; 
+SubList        = ( Pipe OpCombinePipe{~} )+ [OpEndSubList];
+OpCombinePipe  = `&& #And   | `|| #Or;
+OpEndSubList   = `&  #Async | `;  #Sync;
