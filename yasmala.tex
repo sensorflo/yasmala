@@ -467,13 +467,16 @@ Literal  & Description \\
 \end{tabular}
 
 \begin{verbatim}
-A = a b 
-B =   b c 
+A = a | b; 
+B =     b | c;
 A.B -> { ab ac bb bc }
 B.A -> { ba bb ca cb }
 A:B -> { ab ac bb bc ba ca cb }
+B:A -> dito
 A|B -> { a b c}
+B|A -> dito
 A&B -> { b }
+B&A -> dito
 A/B -> { a }
 B/A -> { c }
 \end{verbatim}
