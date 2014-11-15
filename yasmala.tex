@@ -20,6 +20,8 @@ rules. Yasmala, like EBNF or BNF, but unlike minimal BASIC or the C syntactic
 metalanguage, does not depend upon faces. E.g. the C syntactic metalanguage uses
 italic font for non-terminal symbols and bold font for terminal symbols.
 
+This document is a draft.
+
 Yasmala (C) by Florian Kaufmann is licensed under a Creative Commons
 Attribution-ShareAlike 4.0 International License.
 
@@ -581,12 +583,12 @@ These are ideas how Yasmala could further be improved.
       making verbose comments about the grammar)      
 \item Escape sequencer for space (asci 0x20?). Or define that '\ ' is alwyas
   a space, even it the actual white there is a tab, newline whatever. if it  looks like a space, it is a space.
-\item Make clear what is part of lexxer rules and what is part of grammar
-      rules. The grammar only knows tokens. Thus when I want to generate
-      different tokens with regular expressions, I have to make that clear.
-      Either with different operators used than for grammar, or to tag a whole
-      section, or the whole rule, or an expression within a rule as being part
-      of lexer.
+\item Make clear what is part of lexxer rules, what is part of grammar rules
+      and what is part of semantic rules. The grammar only knows tokens. Thus
+      when I want to generate different tokens with regular expressions, I
+      have to make that clear. Either with different operators used than for
+      grammar, or to tag a whole section, or the whole rule, or an expression
+      within a rule as being part of lexer.
 \end{itemize}
 
 \chapter{Yasmala in Yasmala}
