@@ -103,20 +103,21 @@ UnPostOp = TagList? (NamedQuanti | Quantifier);
 Quantifier =
   ##  =n= and =m= are digits        
   %simple         
-  n         | ## repeat exactly n times
+  `{ n `}      | ## repeat exactly n times
   `{ n `- m `} | ## repeat between n to m times inclusive 
-  `{ `- m `}  | ## repeat up m times inclusive
+  `{ `- m `}   | ## repeat up m times inclusive
+  `{ m `- `}   | ## repeat m times (incl.) or more
   
-  "{0}"  | ## not in the last iteration    
-  "{?}"  | ## optional in the last iteration  
-  "{f0}" | ## not in the first iteration
-  "{f?}" | ## optional in the first iteration   
-    
-  %medium  
-  
+  "{l?}" |       ## optional in the last iteration  
+  "{l0}" |       ## not in the last iteration    
+  "{lo}" |       ## only in the last iteration
+  "{f?}" |       ## optional in the first iteration   
+  "{f0}" |       ## not in the first iteration
+  "{fo}" |       ## only in the first iteration
+
   %full
   `{ @n(\d+) \- @m(\d+) `} 
-  `{ ((IterSet\.){f?}QuantiSet\,{?})+ `} ; ## dont allow 0, {} might be usefull            
+  `{ ((IterSet\.){f?}QuantiSet\,{l?})+ `} ; ## dont allow 0, {} might be usefull            
    
 NamedIter = '[aAnNfFmMlL]; 
 NamedQuanti = \d+ | \+ #1OrMore | \* #0OrMore | \? #0Or1;
@@ -159,8 +160,8 @@ CompoundCommand =
   `(( ArithmeticExp `)) | ## Arithmetic evaluation 
   `[[ CondExp `]] |	      ## Conditional Expression. 
   FlowControlCommand;     ## See chapter flow control
-Pipe = ['time [`-p ]] [\! #NegExit] (Command \|{~} )+;  
+Pipe = ['time [`-p ]] [\! #NegExit] (Command \|{l0} )+;  
 List           = SubList+; 
-SubList        = ( Pipe OpCombinePipe{~} )+ [OpEndSubList];
+SubList        = ( Pipe OpCombinePipe{l0} )+ [OpEndSubList];
 OpCombinePipe  = `&& #And   | `|| #Or;
 OpEndSubList   = `&  #Async | `;  #Sync;

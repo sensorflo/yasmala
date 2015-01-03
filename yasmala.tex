@@ -125,7 +125,7 @@ That's how it looks like with Yasmala:
 
 \begin{verbatim}
 ## comma separated list
-List = @`( ( Expr `, {~} )* @`) ?;
+List = @`( ( Expr `, {l0} )* @`) ?;
 
 ## c like for loop
 Loop = 'for `( Expr#Init `; Expr#Cond `; Expr#Inc `) Stmt;
@@ -513,9 +513,7 @@ Syntax   & Description \\
 \verb|`?| & 0 or 1.\\
 \verb|`*| & 0 or more.\\
 \verb|`+| & 1 or more.\\
-\verb|`~| & Exactly 0.\\
-\verb|`!| & Exactly 1.\\
-\verb|`{ n      `}| & Exactly n \\
+\verb|n|  & Exactly n \\
 \verb|`{   `- m `}| & Upto (incl.) m. \\
 \verb|`{ n `-   `}| & n or more \\
 \verb|`{ n `- m `}| & From n to (incl.) m\\
@@ -541,12 +539,9 @@ all contexts.
 \subsection{Iteration specific quantifiers}
   
 \begin{verbatim}
-SimpleQuantifier = '[?*+~!];
-IterQuantifier = `{ '[lf]? SimpleQuantifier `} ;  
+SimpleQuantifier = '[?*+];
+IterQuantifier = `{ '[lf] SimpleQuantifier `} ;  
 \end{verbatim}
-
-If no iteration selector is given, l is asumed --> {?}, {~} are the
-often used ones for optional, no item in the last iteration
 
 
 \chapter{Future Work}
@@ -697,7 +692,7 @@ RangeQuantifier =
     RQExp RQExp | ## implicit alternation
     `( `RQExp `) | Num;
   
-## IterationSpecific. E.g. "List = ( Expr `, {~} )*;"
+## IterationSpecific. E.g. "List = ( Expr `, {l0} )*;"
 ## is a comma separated list, where there may not be
 ## a trailing comma.
 ## The quantifier in 2) only applys to the iteration 
@@ -706,7 +701,7 @@ RangeQuantifier =
 ## ommited, it defaults to l.
 IterSpecificQunatifier =  
   %simple
-  `l0 | ## not in last iteration
+  `l! | ## not in last iteration
   `l? | ## optional in last iteration
 
   %complex
@@ -1229,7 +1224,7 @@ Special: tab underline space hortab.
   
   %%------------------------------------------------------------------------------
   
-  List = @\( (Exp#Element \,{?})* @\)?; 
+  List = @\( (Exp#Element \,{l?})* @\)?; 
   
   List = (Pipe ("&&"#or|"||"#and){f~})+ [\&#async|>\;#sync];
   
